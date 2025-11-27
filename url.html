@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>URLを開くサイト</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background: #f7f7f7;
+      transition: background 0.3s, color 0.3s;
+    }
+    body.dark {
+      background: #111;
+      color: #eee;
+    }
+    .container {
+      max-width: 650px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      transition: background 0.3s;
+    }
+    body.dark .container {
+      background: #222;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      margin-bottom: 10px;
+      background: #fff;
+    }
+    body.dark input[type="text"] {
+      background: #333;
+      color: #eee;
+      border: 1px solid #555;
+    }
+    button {
+      padding: 8px 14px;
+      font-size: 14px;
+      margin-right: 5px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #3498db;
+      color: #fff;
+    }
+    button.delete { background: #e74c3c; }
+    button.move { background: #95a5a6; }
+    ul { list-style: none; padding: 0; }
+    li {
+      background: #eee;
+      padding: 10px;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.3s;
+    }
+    body.dark li { background: #333; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>URLを開くサイト</h2>
+    <button id="toggleDark" style="margin-bottom:10px;">ダークモード切替</button>
+    <input id="input" type="text" placeholder="URL または 検索ワード" />
+    <label><input type="checkbox" id="isGoogle"> Google検索として開く</label><br><br>
+    <button id="go">開く</button>
+    
+
+    <h2>ブックマーク</h2>
+    <input id="bmName" type="text" placeholder="ブックマーク名 (任意)" />
+    <button id="addBM">ブックマークに追加</button>
+    <ul id="bmList"></ul>
+  </div>
+
+<script>
+  const input = document.getElementById("input");
+  const bmName = document.getElementById("bmName");
+  const isGoogle = document.getElementById("isGoogle");
+  const go = document.getElementById("go");
+  const addBM = document.getElementById("addBM");
+  const bmList = document.getElementById("bmList");
+  const toggleDark = document.getElementById("toggleDark");
+
+  // ダークモード復元
+  if (localStorage.getItem("darkMode") === "true") {
+    document.body.classList.add("dark");
+  }
+
+  toggleDark.onclick = () => {
+    document.body.classList.toggle("dark");
+    localStorage.setItem("darkMode", document.body.classList.contains("dark"));
+  };
+
+  function sanitize(url) {
+    const v = url.trim();
+    if (!v) throw new Error("URLが空です");
+    if (/^javascript:/i.test(v)) throw new Error("javascript:は禁止されています");
+    return v;
+  }
+
+  function normalize(url) {
+    try { return new URL(url).toString(); }
+    catch { return "https://" + url; }
+  }
+
+  go.onclick = () => {
+    let val = input.value.trim();
+    if (!val) return;
+    val = sanitize(val);
+
+    let url = isGoogle.checked
+      ? `https://www.google.com/search?q=${encodeURIComponent(val)}`
+      : normalize(val);
+
+    window.open(url, "_blank", "noopener");
+  };
+
+  function loadBookmarks() {
+    return JSON.parse(localStorage.getItem("bookmarks") || "[]");
+  }
+
+  function saveBookmarks(list) {
+    localStorage.setItem("bookmarks", JSON.stringify(list));
+  }
+
+  function renderBookmarks() {
+    const list = loadBookmarks();
+    bmList.innerHTML = "";
+
+    list.forEach((bm, index) => {
+      const li = document.createElement("li");
+
+      const fav = document.createElement("span");
+      fav.textContent = bm.fav ? "★" : "☆";
+      fav.style.cursor = "pointer";
+      fav.style.marginRight = "10px";
+      fav.style.fontSize = "20px";
+      fav.onclick = () => {
+        bm.fav = !bm.fav;
+        saveBookmarks(list);
+        renderBookmarks();
+      };
+
+      const span = document.createElement("span");
+      span.textContent = `${bm.name || "(名称なし)"} - ${bm.url}`;
+      span.style.cursor = "pointer";
+      span.onclick = () => window.open(bm.url, "_blank", "noopener");
+
+      const btns = document.createElement("div");
+
+      const up = document.createElement("button");
+      up.textContent = "▲";
+      up.className = "move";
+      up.onclick = () => moveBookmark(index, -1);
+
+      const down = document.createElement("button");
+      down.textContent = "▼";
+      down.className = "move";
+      down.onclick = () => moveBookmark(index, 1);
+
+      const edit = document.createElement("button");
+      edit.textContent = "✎";
+      edit.className = "move";
+      edit.onclick = () => editBookmark(index);
+
+      const del = document.createElement("button");
+      del.textContent = "×";
+      del.className = "delete";
+      del.onclick = () => deleteBookmark(index);
+
+      btns.appendChild(up);
+      btns.appendChild(down);
+      btns.appendChild(edit);
+      btns.appendChild(del);
+
+      li.appendChild(fav);
+      li.appendChild(span);
+      li.appendChild(btns);
+      bmList.appendChild(li);
+    });
+  }
+
+  function addBookmark() {
+    let val = input.value.trim();
+    if (!val) return;
+    val = sanitize(val);
+
+    const normalized = normalize(val);
+    const name = bmName.value.trim() || val;
+
+    const list = loadBookmarks();
+    list.push({ name, url: normalized, fav: false });
+
+    saveBookmarks(list);
+    renderBookmarks();
+  }
+
+  function deleteBookmark(i) {
+    const list = loadBookmarks();
+    list.splice(i, 1);
+    saveBookmarks(list);
+    renderBookmarks();
+  }
+
+  function editBookmark(i) {
+    const list = loadBookmarks();
+    const bm = list[i];
+    const newName = prompt("新しい名前を入力", bm.name);
+    if (newName === null) return;
+    list[i].name = newName.trim() || list[i].name;
+    saveBookmarks(list);
+    renderBookmarks();
+  }
+
+  function moveBookmark(i, dir) {
+    const list = loadBookmarks();
+    const ni = i + dir;
+    if (ni < 0 || ni >= list.length) return;
+
+    const tmp = list[i];
+    list[i] = list[ni];
+    list[ni] = tmp;
+
+    saveBookmarks(list);
+    renderBookmarks();
+  }
+
+  addBM.onclick = addBookmark;
+
+  renderBookmarks();
+</script>
+
+</body>
+</html>
