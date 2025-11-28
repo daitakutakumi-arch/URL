@@ -240,8 +240,229 @@
   addBM.onclick = addBookmark;
 
   renderBookmarks();
+
+  function renderBookmarks() {
+  const list = loadBookmarks();
+  bmList.innerHTML = "";
+
+  list.forEach((bm, index) => {
+    const li = document.createElement("li");
+
+    // --- ★ お気に入り ---
+    const fav = document.createElement("span");
+    fav.textContent = bm.fav ? "★" : "☆";
+    fav.style.cursor = "pointer";
+    fav.style.marginRight = "10px";
+    fav.style.fontSize = "20px";
+    fav.onclick = () => {
+      bm.fav = !bm.fav;
+      saveBookmarks(list);
+      renderBookmarks();
+    };
+
+    // --- 編集中 UI ---
+    const nameSpan = document.createElement("span");
+    nameSpan.textContent = `${bm.name || "(名称なし)"} - ${bm.url}`;
+    nameSpan.style.cursor = "pointer";
+    nameSpan.onclick = () => window.open(bm.url, "_blank", "noopener");
+
+    const editArea = document.createElement("div");
+    editArea.style.display = "none"; // 最初は非表示
+
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.value = bm.name;
+    nameInput.style.width = "200px";
+    nameInput.style.marginRight = "10px";
+
+    const saveBtn = document.createElement("button");
+    saveBtn.textContent = "保存";
+    saveBtn.className = "move";
+    saveBtn.onclick = () => {
+      bm.name = nameInput.value.trim() || "(名称なし)";
+      saveBookmarks(list);
+      renderBookmarks();
+    };
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.textContent = "キャンセル";
+    cancelBtn.className = "move";
+    cancelBtn.onclick = () => renderBookmarks();
+
+    editArea.appendChild(nameInput);
+    editArea.appendChild(saveBtn);
+    editArea.appendChild(cancelBtn);
+
+    // --- ボタン類 ---
+    const btns = document.createElement("div");
+
+    const up = document.createElement("button");
+    up.textContent = "▲";
+    up.className = "move";
+    up.onclick = () => moveBookmark(index, -1);
+
+    const down = document.createElement("button");
+    down.textContent = "▼";
+    down.className = "move";
+    down.onclick = () => moveBookmark(index, 1);
+
+    const edit = document.createElement("button");
+    edit.textContent = "✎";
+    edit.className = "move";
+    edit.onclick = () => {
+      // 編集 UI に切り替える
+      nameSpan.style.display = "none";
+      editArea.style.display = "flex";
+    };
+
+    const del = document.createElement("button");
+    del.textContent = "×";
+    del.className = "delete";
+    del.onclick = () => deleteBookmark(index);
+
+    btns.appendChild(up);
+    btns.appendChild(down);
+    btns.appendChild(edit);
+    btns.appendChild(del);
+
+    li.appendChild(fav);
+    li.appendChild(nameSpan);
+    li.appendChild(editArea);
+    li.appendChild(btns);
+
+    bmList.appendChild(li);
+  });
+}
+
+function renderBookmarks() {
+  const list = loadBookmarks();
+  bmList.innerHTML = "";
+
+  list.forEach((bm, index) => {
+    const li = document.createElement("li");
+
+    // --- お気に入り ---
+    const fav = document.createElement("span");
+    fav.textContent = bm.fav ? "★" : "☆";
+    fav.style.cursor = "pointer";
+    fav.style.marginRight = "10px";
+    fav.style.fontSize = "20px";
+    fav.onclick = () => {
+      bm.fav = !bm.fav;
+      saveBookmarks(list);
+      renderBookmarks();
+    };
+
+    // --- 名前表示 ---
+    const nameSpan = document.createElement("span");
+    nameSpan.textContent = `${bm.name || "(名称なし)"} - ${bm.url}`;
+    nameSpan.style.cursor = "pointer";
+    nameSpan.onclick = () => window.open(bm.url, "_blank", "noopener");
+
+    // --- 編集 UI ---
+    const editArea = document.createElement("div");
+    editArea.style.display = "none";
+
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.value = bm.name;
+    nameInput.style.width = "200px";
+    nameInput.style.marginRight = "10px";
+
+    const saveBtn = document.createElement("button");
+    saveBtn.textContent = "保存";
+    saveBtn.className = "move";
+    saveBtn.onclick = () => {
+      bm.name = nameInput.value.trim() || "(名称なし)";
+      saveBookmarks(list);
+      renderBookmarks();
+    };
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.textContent = "キャンセル";
+    cancelBtn.className = "move";
+    cancelBtn.onclick = () => renderBookmarks();
+
+    editArea.appendChild(nameInput);
+    editArea.appendChild(saveBtn);
+    editArea.appendChild(cancelBtn);
+
+    // --- 削除確認 UI ---
+    const delConfirm = document.createElement("div");
+    delConfirm.style.display = "none";
+
+    const delText = document.createElement("span");
+    delText.textContent = "削除しますか？";
+    delText.style.marginRight = "10px";
+
+    const yesBtn = document.createElement("button");
+    yesBtn.textContent = "はい";
+    yesBtn.className = "delete";
+    yesBtn.onclick = () => {
+      const lst = loadBookmarks();
+      lst.splice(index, 1);
+      saveBookmarks(lst);
+      renderBookmarks();
+    };
+
+    const noBtn = document.createElement("button");
+    noBtn.textContent = "いいえ";
+    noBtn.className = "move";
+    noBtn.onclick = () => renderBookmarks();
+
+    delConfirm.appendChild(delText);
+    delConfirm.appendChild(yesBtn);
+    delConfirm.appendChild(noBtn);
+
+    // --- ボタン類 ---
+    const btns = document.createElement("div");
+
+    const up = document.createElement("button");
+    up.textContent = "▲";
+    up.className = "move";
+    up.onclick = () => moveBookmark(index, -1);
+
+    const down = document.createElement("button");
+    down.textContent = "▼";
+    down.className = "move";
+    down.onclick = () => moveBookmark(index, 1);
+
+    const edit = document.createElement("button");
+    edit.textContent = "✎";
+    edit.className = "move";
+    edit.onclick = () => {
+      nameSpan.style.display = "none";
+      editArea.style.display = "flex";
+    };
+
+    const del = document.createElement("button");
+    del.textContent = "×";
+    del.className = "delete";
+    del.onclick = () => {
+      // 削除確認 UI を表示
+      nameSpan.style.display = "none";
+      editArea.style.display = "none";
+      delConfirm.style.display = "flex";
+      delConfirm.style.gap = "10px";
+    };
+
+    btns.appendChild(up);
+    btns.appendChild(down);
+    btns.appendChild(edit);
+    btns.appendChild(del);
+
+    li.appendChild(fav);
+    li.appendChild(nameSpan);
+    li.appendChild(editArea);
+    li.appendChild(delConfirm);
+    li.appendChild(btns);
+
+    bmList.appendChild(li);
+  });
+}
+
+
 </script>
 
 </body>
 </html>
-
