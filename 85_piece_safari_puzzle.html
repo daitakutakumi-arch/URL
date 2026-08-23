@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>🖼️ Safari 85ピースパズル</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  margin:0; padding:calc(14px + env(safe-area-inset-top)) 10px calc(20px + env(safe-area-inset-bottom));
+  min-height:100vh;background:#10151d;color:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;
+}
+.wrap{width:100%;max-width:900px;margin:auto;text-align:center}
+h1{font-size:26px;margin:6px 0}
+.info{opacity:.78;font-size:14px;margin:5px 0 12px}
+.controls{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+button{
+  appearance:none;-webkit-appearance:none;border:0;border-radius:12px;
+  padding:11px 15px;background:#fff;color:#111;font-size:15px;font-weight:700;
+}
+.stats{font-size:14px;font-variant-numeric:tabular-nums}
+#board{
+  width:100%;aspect-ratio:17/5;display:grid;
+  grid-template-columns:repeat(17,1fr);grid-template-rows:repeat(5,1fr);
+  gap:1px;padding:2px;background:#000;border-radius:10px;overflow:hidden;
+  touch-action:manipulation;
+}
+.piece{
+  position:relative;overflow:hidden;background:#eee;border-radius:2px;
+  border:1px solid rgba(0,0,0,.18);touch-action:manipulation;
+}
+.piece.selected{outline:3px solid #ffd43b;z-index:5;transform:scale(.96)}
+.art{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:clamp(17px,4.2vw,42px);pointer-events:none;
+}
+#message{min-height:32px;margin-top:12px;font-size:16px;font-weight:800}
+.small{opacity:.6;font-size:12px;margin-top:5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>🖼️ 85ピース・パズル</h1>
+<div class="info">Safari向け・タップだけで遊べる17×5パズル</div>
+
+<div class="controls">
+  <button id="shuffle">シャッフル</button>
+  <button id="reset">完成状態</button>
+  <span class="stats">手数 <b id="moves">0</b>　時間 <b id="time">00:00</b></span>
+</div>
+
+<div id="board"></div>
+<div id="message">ピースを1つタップ → 交換したいピースをタップ</div>
+<div class="small">※ iPhone/iPadではドラッグ不要</div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+const COLS=17, ROWS=5, N=85;
+const board=document.getElementById("board");
+const movesEl=document.getElementById("moves");
+const timeEl=document.getElementById("time");
+const message=document.getElementById("message");
+let order=[], selected=-1, moves=0, start=0, timer=null;
+
+function makeSolved(){
+  order=[];
+  for(let i=0;i<N;i++) order.push(i);
+}
+function timeText(sec){
+  const m=Math.floor(sec/60);
+  const s=sec%60;
+  return String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
+}
+function startTimer(){
+  if(timer) return;
+  start=Date.now();
+  timer=setInterval(function(){
+    timeEl.textContent=timeText(Math.floor((Date.now()-start)/1000));
+  },250);
+}
+function stopTimer(){
+  if(timer){clearInterval(timer);timer=null;}
+}
+function artFor(piece){
+  const d=document.createElement("div");
+  d.className="art";
+  d.textContent="🖼️";
+  const x=piece%COLS, y=Math.floor(piece/COLS);
+  d.style.transform="translate("+
+    ((COLS/2-x)*5)+"%,"+
+    ((ROWS/2-y)*9)+"%) scale(1.8)";
+  return d;
+}
+function render(){
+  board.innerHTML="";
+  for(let slot=0;slot<N;slot++){
+    const p=document.createElement("div");
+    p.className="piece"+(selected===slot?" selected":"");
+    p.appendChild(artFor(order[slot]));
+    p.setAttribute("role","button");
+    p.setAttribute("aria-label","パズルピース "+(slot+1));
+    p.addEventListener("click",function(){
+      startTimer();
+      if(selected===-1){
+        selected=slot;
+        message.textContent="もう1つタップすると交換します";
+        render();
+      }else if(selected===slot){
+        selected=-1;
+        message.textContent="ピースを1つタップしてください";
+        render();
+      }else{
+        const a=selected,b=slot;
+        const tmp=order[a];order[a]=order[b];order[b]=tmp;
+        moves++;
+        movesEl.textContent=moves;
+        selected=-1;
+        render();
+        checkWin();
+      }
+    },{passive:true});
+    board.appendChild(p);
+  }
+}
+function checkWin(){
+  for(let i=0;i<N;i++){
+    if(order[i]!==i) return;
+  }
+  stopTimer();
+  message.textContent="🎉 完成！ "+moves+"手・"+timeEl.textContent;
+}
+function shuffle(){
+  makeSolved();
+  for(let i=N-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    const t=order[i];order[i]=order[j];order[j]=t;
+  }
+  if(order.every(function(v,i){return v===i;})) return shuffle();
+  moves=0;selected=-1;movesEl.textContent="0";timeEl.textContent="00:00";
+  stopTimer();message.textContent="ピースを1つタップ → 交換したいピースをタップ";
+  render();
+}
+function reset(){
+  stopTimer();makeSolved();moves=0;selected=-1;
+  movesEl.textContent="0";timeEl.textContent="00:00";
+  message.textContent="完成状態に戻しました。シャッフルして開始！";
+  render();
+}
+document.getElementById("shuffle").addEventListener("click",shuffle);
+document.getElementById("reset").addEventListener("click",reset);
+makeSolved();
+shuffle();
+})();
+</script>
+</body>
+</html>
